@@ -24,9 +24,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/monobank-mcp.git"
+    "url": "https://github.com/akutishevsky/monobank-mcp-server.git"
   },
-  "homepage": "https://github.com/yourusername/monobank-mcp#readme",
+  "homepage": "https://github.com/akutishevsky/monobank-mcp-server#readme",
   "engines": {
     "node": ">=18.0.0"
   },
