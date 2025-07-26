@@ -1,0 +1,42 @@
+{
+  "name": "monobank-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Monobank API integration",
+  "main": "index.js",
+  "bin": {
+    "monobank-mcp-server": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x build/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "build"
+  ],
+  "keywords": [
+    "mcp",
+    "monobank",
+    "api",
+    "banking",
+    "model-context-protocol"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/monobank-mcp.git"
+  },
+  "homepage": "https://github.com/yourusername/monobank-mcp#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0",
+    "typescript": "^5.8.3"
+  }
+}
