@@ -1,0 +1,56 @@
+# Source files
+src/
+
+# Configuration files
+.env
+.env.*
+!.env.example
+tsconfig.json
+.eslintrc*
+.prettierrc*
+
+# Development files
+*.log
+*.map
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+coverage/
+.nyc_output/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Build artifacts
+build/
+dist/
+
+# Node modules (should already be excluded by npm)
+node_modules/
+
+# Misc
+.DS_Store
+Thumbs.db
