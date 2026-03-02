@@ -34,6 +34,7 @@
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
+    "prettier": "^3.8.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
