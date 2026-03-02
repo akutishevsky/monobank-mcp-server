@@ -30,7 +30,7 @@ server.tool(
         try {
             const { baseUrl } = getConfig();
             const response = await fetchWithErrorHandling(
-                `${baseUrl}/bank/currency`
+                `${baseUrl}/bank/currency`,
             );
             const result = await parseJsonResponse<CurrencyRate[]>(response);
             const currencyRates = CurrencyRatesResponseSchema.parse(result);
@@ -38,7 +38,7 @@ server.tool(
         } catch (error) {
             return formatErrorAsToolResponse(error, "get currency rates");
         }
-    }
+    },
 );
 
 server.tool(
@@ -54,14 +54,14 @@ server.tool(
                     headers: {
                         "X-Token": monobankApiToken,
                     },
-                }
+                },
             );
             const clientInfo = await parseJsonResponse(response);
             return createSuccessResponse(clientInfo);
         } catch (error) {
             return formatErrorAsToolResponse(error, "get client info");
         }
-    }
+    },
 );
 
 server.tool(
@@ -73,7 +73,7 @@ server.tool(
                 .string()
                 .nonempty()
                 .describe(
-                    "A unique indentificator of the Monobank account or a jar from the Statement list. If not provided, then a defaukt account is used, which is equal to '0'."
+                    "A unique indentificator of the Monobank account or a jar from the Statement list. If not provided, then a defaukt account is used, which is equal to '0'.",
                 ),
             from: z
                 .string()
@@ -103,7 +103,7 @@ server.tool(
                     headers: {
                         "X-Token": monobankApiToken,
                     },
-                }
+                },
             );
 
             const data = await parseJsonResponse(response);
@@ -114,7 +114,7 @@ server.tool(
         } catch (error) {
             return formatErrorAsToolResponse(error, "fetch statement");
         }
-    }
+    },
 );
 
 async function main() {

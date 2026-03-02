@@ -8,7 +8,7 @@ let config: Config | null = null;
 export function initializeConfig(): Config {
     if (!process.env.MONOBANK_API_TOKEN) {
         throw new Error(
-            "Failed to get the MONOBANK_API_TOKEN. Probably it wasn't added during the server configuration."
+            "Failed to get the MONOBANK_API_TOKEN. Probably it wasn't added during the server configuration.",
         );
     }
 
@@ -22,7 +22,9 @@ export function initializeConfig(): Config {
 
 export function getConfig(): Config {
     if (!config) {
-        throw new Error("Configuration not initialized. Call initializeConfig() first.");
+        throw new Error(
+            "Configuration not initialized. Call initializeConfig() first.",
+        );
     }
     return config;
 }

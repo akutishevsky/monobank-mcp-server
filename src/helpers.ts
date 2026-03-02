@@ -24,7 +24,10 @@ export function createSuccessResponse(data: any): ToolResponse {
         content: [
             {
                 type: "text",
-                text: typeof data === "string" ? data : JSON.stringify(data, null, 2),
+                text:
+                    typeof data === "string"
+                        ? data
+                        : JSON.stringify(data, null, 2),
             },
         ],
     };
@@ -38,17 +41,17 @@ export function formatZodError(error: z.ZodError): string {
 
 export async function fetchWithErrorHandling(
     url: string,
-    options?: RequestInit
+    options?: RequestInit,
 ): Promise<Response> {
     const response = await fetch(url, options);
-    
+
     if (!response.ok) {
         const errorText = await response
             .text()
             .catch(() => response.statusText);
         throw new Error(`HTTP ${response.status} - ${errorText}`);
     }
-    
+
     return response;
 }
 
@@ -59,26 +62,29 @@ export async function parseJsonResponse<T>(response: Response): Promise<T> {
         throw new Error(
             `Failed to parse response as JSON: ${
                 error instanceof Error ? error.message : "Unknown JSON error"
-            }`
+            }`,
         );
     }
 }
 
-export function formatErrorAsToolResponse(error: unknown, context: string): ToolResponse {
+export function formatErrorAsToolResponse(
+    error: unknown,
+    context: string,
+): ToolResponse {
     if (error instanceof z.ZodError) {
         return createErrorResponse(
-            `Invalid ${context} format: ${formatZodError(error)}`
+            `Invalid ${context} format: ${formatZodError(error)}`,
         );
     }
-    
+
     if (error instanceof Error) {
         return createErrorResponse(
-            error.message.startsWith("HTTP") 
+            error.message.startsWith("HTTP")
                 ? `Failed to ${context}: ${error.message}`
-                : `Error ${context}: ${error.message}`
+                : `Error ${context}: ${error.message}`,
         );
     }
-    
+
     return createErrorResponse(`Error ${context}: Unknown error`);
 }
 
@@ -90,7 +96,7 @@ interface DateValidationResult {
 
 export function validateStatementDates(
     from: string,
-    to?: string
+    to?: string,
 ): DateValidationResult | ToolResponse {
     const fromDate = new Date(from);
     const toDate = to ? new Date(to) : new Date();
@@ -109,7 +115,7 @@ export function validateStatementDates(
     // Validate time range (max 31 days + 1 hour = 2682000 seconds)
     if (toInSeconds - fromInSeconds > 2682000) {
         return createErrorResponse(
-            "Time range exceeds maximum allowed (31 days + 1 hour). Please use a smaller date range."
+            "Time range exceeds maximum allowed (31 days + 1 hour). Please use a smaller date range.",
         );
     }
 
