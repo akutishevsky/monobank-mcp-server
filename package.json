@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc && chmod +x build/index.js",
+    "format": "prettier --write src/",
     "prepublishOnly": "npm run build"
   },
   "files": [
