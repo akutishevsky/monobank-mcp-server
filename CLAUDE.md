@@ -43,4 +43,4 @@ The server exposes three MCP tools over stdio transport:
 
 ## Formatting
 
-Prettier with 4-space indentation (see `src/.prettierrc`). No ESLint configured.
+Prettier with 4-space indentation (see `.prettierrc`). No ESLint configured.
