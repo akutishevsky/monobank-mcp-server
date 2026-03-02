@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { StatementItem } from "./interfaces.js";
 
 export interface ToolResponse {
     [key: string]: unknown;
@@ -19,7 +20,7 @@ export function createErrorResponse(message: string): ToolResponse {
     };
 }
 
-export function createSuccessResponse(data: any): ToolResponse {
+export function createSuccessResponse(data: unknown): ToolResponse {
     return {
         content: [
             {
@@ -122,7 +123,7 @@ export function validateStatementDates(
     return { fromInSeconds, toInSeconds };
 }
 
-export function formatStatementItems(items: any[]): any[] {
+export function formatStatementItems(items: StatementItem[]) {
     return items.map((item) => ({
         ...item,
         amount: item.amount / 100,

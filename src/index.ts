@@ -2,7 +2,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { CurrencyRate } from "./interfaces.js";
+import { CurrencyRate, ClientInfo, StatementItem } from "./interfaces.js";
 import { CurrencyRatesResponseSchema, StatementItemSchema } from "./schemas.js";
 import {
     createSuccessResponse,
@@ -53,7 +53,7 @@ server.tool(
                     },
                 },
             );
-            const clientInfo = await parseJsonResponse(response);
+            const clientInfo = await parseJsonResponse<ClientInfo>(response);
             return createSuccessResponse(clientInfo);
         } catch (error) {
             return formatErrorAsToolResponse(error, "get client info");
@@ -103,7 +103,7 @@ server.tool(
                 },
             );
 
-            const data = await parseJsonResponse(response);
+            const data = await parseJsonResponse<StatementItem[]>(response);
             const statement = z.array(StatementItemSchema).parse(data);
             const formattedStatement = formatStatementItems(statement);
 

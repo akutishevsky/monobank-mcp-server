@@ -41,9 +41,14 @@ The server exposes three MCP tools over stdio transport:
 - Authenticated endpoints use the `X-Token` header
 - Config throws on missing `MONOBANK_API_TOKEN` at initialization
 
-## Formatting
+## Formatting & Linting
 
-Prettier with 4-space indentation (see `.prettierrc`). No ESLint configured.
+Prettier with 4-space indentation (see `.prettierrc`). ESLint 9 with flat config (`eslint.config.js`), using `typescript-eslint` recommended rules and `eslint-config-prettier` to avoid conflicts.
+
+```bash
+npm run lint         # eslint src/
+npm run format       # prettier --write src/
+```
 
 ---
 
