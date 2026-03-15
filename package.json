@@ -11,7 +11,8 @@
     "build": "tsc && chmod +x build/index.js",
     "format": "prettier --write src/",
     "lint": "eslint src/",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "pack:mcpb": "npm run build && rm -rf mcpb-staging && mkdir -p mcpb-staging/server && cp -r build/* mcpb-staging/server/ && cp -r node_modules mcpb-staging/node_modules && cp package.json mcpb-staging/package.json && cp manifest.json mcpb-staging/manifest.json && cd mcpb-staging && zip -r ../monobank-mcp-server.mcpb . && cd .. && rm -rf mcpb-staging"
   },
   "files": [
     "build"
