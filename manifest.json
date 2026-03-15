@@ -1,0 +1,57 @@
+{
+    "manifest_version": "0.3",
+    "name": "monobank-mcp-server",
+    "version": "1.1.1",
+    "display_name": "Monobank",
+    "description": "MCP server for Monobank API integration — access currency rates, client info, and bank statements",
+    "author": {
+        "name": "akutishevsky",
+        "url": "https://github.com/akutishevsky"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/akutishevsky/monobank-mcp-server.git"
+    },
+    "homepage": "https://github.com/akutishevsky/monobank-mcp-server#readme",
+    "keywords": ["mcp", "monobank", "api", "banking", "model-context-protocol"],
+    "server": {
+        "type": "node",
+        "entry_point": "server/index.js",
+        "mcp_config": {
+            "command": "node",
+            "args": ["${__dirname}/server/index.js"],
+            "env": {
+                "MONOBANK_API_TOKEN": "${user_config.monobank_api_token}"
+            }
+        }
+    },
+    "compatibility": {
+        "runtimes": {
+            "node": ">=18.0.0"
+        }
+    },
+    "tools": [
+        {
+            "name": "get_currency_rates",
+            "description": "Get current Monobank currency exchange rates (public, no auth required)"
+        },
+        {
+            "name": "get_client_info",
+            "description": "Get authenticated client info including accounts and jars"
+        },
+        {
+            "name": "get_statement",
+            "description": "Get account statement for a date range (max 31 days)"
+        }
+    ],
+    "user_config": {
+        "monobank_api_token": {
+            "type": "string",
+            "title": "Monobank API Token",
+            "description": "Personal API token from https://api.monobank.ua/",
+            "required": true,
+            "sensitive": true
+        }
+    }
+}
