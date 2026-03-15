@@ -2,6 +2,10 @@
 
 MCP (Model Context Protocol) server for integrating with Monobank API.
 
+## Quick Install
+
+Download the latest `.mcpb` bundle from the [Releases](https://github.com/akutishevsky/monobank-mcp-server/releases) page and open it — Claude Desktop or Claude Code will handle the rest. You'll be prompted to enter your Monobank API token during installation.
+
 ## Prerequisites
 
 - Node.js 18.0.0 or higher
