@@ -10,9 +10,14 @@ MCP (Model Context Protocol) server that bridges Claude AI with the Monobank ban
 
 ```bash
 npm run build        # tsc && chmod +x build/index.js
+npm run pack:mcpb    # build + package as .mcpb bundle
 ```
 
 TypeScript compiles from `src/` to `build/`. The output entry point (`build/index.js`) has a shebang and is chmod'd executable. No test or lint scripts exist.
+
+## MCPB Support
+
+The project includes a `manifest.json` (MCPB v0.3) for one-click installation in Claude Desktop/Claude Code. The manifest declares all three tools, wires `MONOBANK_API_TOKEN` via `user_config` (secure prompt on install), and requires Node >=18. The `pack:mcpb` script stages `build/`, `node_modules/`, `package.json`, and `manifest.json` into a ZIP archive (`monobank-mcp-server.mcpb`).
 
 ## Architecture
 
