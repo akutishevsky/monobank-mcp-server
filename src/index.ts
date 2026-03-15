@@ -16,7 +16,7 @@ import { initializeConfig, getConfig } from "./config.js";
 
 const server = new McpServer({
     name: "monobank-mcp-server",
-    version: "1.1.1",
+    version: "1.2.0",
 });
 
 server.tool(

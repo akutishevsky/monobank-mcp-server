@@ -1,7 +1,7 @@
 {
     "manifest_version": "0.3",
     "name": "monobank-mcp-server",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "display_name": "Monobank",
     "description": "MCP server for Monobank API integration — access currency rates, client info, and bank statements",
     "author": {
