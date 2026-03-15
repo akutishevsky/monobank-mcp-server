@@ -53,6 +53,18 @@ To use this server with an MCP client, add it to your configuration:
 - "Покажи всі транзакції за жовтень"
 - "Скільки я витратив на їжу за останній місяць?"
 
+## MCPB (One-Click Installation)
+
+This server is available as an MCPB bundle for one-click installation in Claude Desktop and Claude Code.
+
+To build the `.mcpb` bundle locally:
+
+```bash
+npm run pack:mcpb
+```
+
+This produces `monobank-mcp-server.mcpb` which can be installed directly in any MCPB-compatible client. During installation, you'll be prompted to enter your Monobank API token securely.
+
 ## License
 
 MIT
