@@ -17,9 +17,17 @@ Download the latest `.mcpb` bundle from the [Releases](https://github.com/akutis
 
 The server provides three tools:
 
-1. **get_currency_rates** - Get currency exchange rates (rate limited to once per 5 minutes)
-2. **get_client_info** - Get client information and account details (rate limited to once per 60 seconds)
-3. **get_statement** - Get account statements for a specified date range (rate limited to once per 60 seconds, max 31 days + 1 hour)
+1. **get_currency_rates** - Get currency exchange rates. Public endpoint; works without an API token.
+2. **get_client_info** - Get client information, accounts and jars. Requires a token.
+3. **get_statement** - Get the statement for an account or jar over a date range. Requires a token. Maximum range is 31 days + 1 hour.
+
+### Behaviour worth knowing
+
+- **Amounts are returned in currency units, not cents.** A balance of 100,000.00 UAH is reported as `100000`, not `10000000`. This applies to every monetary field in both `get_client_info` and `get_statement`, including `commissionRate`, which Monobank returns as an absolute amount despite its name.
+- **Responses are cached in memory** so that Monobank's rate limits are not exceeded: 5 minutes for currency rates, 60 seconds for client info and for each distinct statement query. A repeated call inside that window returns the cached result instead of failing with `HTTP 429`.
+- **Statement dates** are ISO 8601 `YYYY-MM-DD`, interpreted as UTC. The `to` date is **inclusive** — a statement from `2024-10-01` to `2024-10-31` covers all of October 31. Omit `to` to mean "up to now".
+- **The statement `account` parameter defaults to `0`**, the client's default account. Account and jar identifiers returned by `get_client_info` are also accepted.
+- **`MONOBANK_API_TOKEN` is only needed for `get_client_info` and `get_statement`.** The server starts without it and `get_currency_rates` keeps working; the two authenticated tools return an error explaining that the variable is unset.
 
 ## MCP Configuration
 

@@ -2,8 +2,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { CurrencyRate, ClientInfo, StatementItem } from "./interfaces.js";
-import { CurrencyRatesResponseSchema, StatementItemSchema } from "./schemas.js";
+import {
+    ClientInfoSchema,
+    CurrencyRatesResponseSchema,
+    StatementResponseSchema,
+} from "./schemas.js";
 import {
     createSuccessResponse,
     fetchWithErrorHandling,
@@ -11,26 +14,41 @@ import {
     formatErrorAsToolResponse,
     validateStatementDates,
     formatStatementItems,
+    formatClientInfo,
+    withCache,
 } from "./helpers.js";
-import { initializeConfig, getConfig } from "./config.js";
+import { initializeConfig, getConfig, requireToken } from "./config.js";
+
+/** Monobank allows the public currency endpoint once per 5 minutes. */
+const CURRENCY_CACHE_TTL_MS = 300_000;
+
+/** Monobank allows each personal endpoint once per 60 seconds. */
+const PERSONAL_CACHE_TTL_MS = 60_000;
 
 const server = new McpServer({
     name: "monobank-mcp-server",
-    version: "1.2.0",
+    version: "1.3.0",
 });
 
 server.tool(
     "get_currency_rates",
-    "Get a basic list of currency rates from Monobank. The information can be refreshed once per 5 minutes, otherwise an error will be thrown.",
+    "Get the list of currency exchange rates from Monobank. This is a public endpoint and does not require an API token. Monobank permits only one request per 5 minutes, so the response is cached in memory for 5 minutes: calls made within that window return the cached rates instead of failing with a rate-limit error.",
     {},
     async () => {
         try {
             const { baseUrl } = getConfig();
-            const response = await fetchWithErrorHandling(
-                `${baseUrl}/bank/currency`,
+            const url = `${baseUrl}/bank/currency`;
+
+            const currencyRates = await withCache(
+                url,
+                CURRENCY_CACHE_TTL_MS,
+                async () => {
+                    const response = await fetchWithErrorHandling(url);
+                    const result = await parseJsonResponse<unknown>(response);
+                    return CurrencyRatesResponseSchema.parse(result);
+                },
             );
-            const result = await parseJsonResponse<CurrencyRate[]>(response);
-            const currencyRates = CurrencyRatesResponseSchema.parse(result);
+
             return createSuccessResponse(currencyRates);
         } catch (error) {
             return formatErrorAsToolResponse(error, "get currency rates");
@@ -40,20 +58,28 @@ server.tool(
 
 server.tool(
     "get_client_info",
-    "Get information about a client and a list of their accounts and jars. The tool can be called not more than 1 time per 60 seconds, otherwise an error will be thrown.",
+    "Get information about the client together with the list of their accounts and jars. Requires the MONOBANK_API_TOKEN environment variable. Monobank permits only one request per 60 seconds, so the response is cached in memory for 60 seconds: calls made within that window return the cached data instead of failing with a rate-limit error. All monetary amounts are returned in currency units, not in cents. The account and jar identifiers returned by this tool can be passed to get_statement.",
     {},
     async () => {
         try {
-            const { baseUrl, monobankApiToken } = getConfig();
-            const response = await fetchWithErrorHandling(
-                `${baseUrl}/personal/client-info`,
-                {
-                    headers: {
-                        "X-Token": monobankApiToken,
-                    },
+            const { baseUrl } = getConfig();
+            const monobankApiToken = requireToken();
+            const url = `${baseUrl}/personal/client-info`;
+
+            const clientInfo = await withCache(
+                url,
+                PERSONAL_CACHE_TTL_MS,
+                async () => {
+                    const response = await fetchWithErrorHandling(url, {
+                        headers: {
+                            "X-Token": monobankApiToken,
+                        },
+                    });
+                    const result = await parseJsonResponse<unknown>(response);
+                    return formatClientInfo(ClientInfoSchema.parse(result));
                 },
             );
-            const clientInfo = await parseJsonResponse<ClientInfo>(response);
+
             return createSuccessResponse(clientInfo);
         } catch (error) {
             return formatErrorAsToolResponse(error, "get client info");
@@ -63,49 +89,54 @@ server.tool(
 
 server.tool(
     "get_statement",
-    "Get Monobank statement for the time from {from} to {to} time in seconds in Unix time format. The maximum time for which it is posssible to obtain a statement is 31 days + 1 hour (2682000 seconds). The statement can be retrieved not more than once per 60 seconds, otherwise an error will be thrown.",
+    "Get the Monobank statement for an account or jar between the {from} and {to} dates. Requires the MONOBANK_API_TOKEN environment variable. The maximum period for which a statement can be obtained is 31 days + 1 hour (2682000 seconds). Monobank permits only one request per 60 seconds, so every distinct account/date-range request is cached in memory for 60 seconds: repeating the same request within that window returns the cached statement instead of failing with a rate-limit error. All monetary amounts are returned in currency units, not in cents.",
     {
-        input: z.object({
-            account: z
-                .string()
-                .nonempty()
-                .describe(
-                    "A unique indentificator of the Monobank account or a jar from the Statement list. If not provided, then a defaukt account is used, which is equal to '0'.",
-                ),
-            from: z
-                .string()
-                .nonempty()
-                .describe("A date in ISO 8601 YYYY-MM-DD format."),
-            to: z
-                .string()
-                .optional()
-                .describe("A date in ISO 8601 YYYY-MM-DD format."),
-        }),
+        account: z
+            .string()
+            .nonempty()
+            .default("0")
+            .describe(
+                "A unique identifier of the Monobank account or jar to build the statement for. Defaults to '0', which means the client's default account. Account and jar identifiers can be obtained from the get_client_info tool.",
+            ),
+        from: z
+            .string()
+            .nonempty()
+            .describe(
+                "The start date of the statement period, in ISO 8601 YYYY-MM-DD format (UTC).",
+            ),
+        to: z
+            .string()
+            .optional()
+            .describe(
+                "The end date of the statement period, in ISO 8601 YYYY-MM-DD format (UTC). The whole day is included. Defaults to the current moment when omitted.",
+            ),
     },
-    async ({ input }) => {
+    async ({ account, from, to }) => {
         try {
-            const { account, from, to } = input;
-
             const dateValidation = validateStatementDates(from, to);
             if ("content" in dateValidation) {
                 return dateValidation;
             }
 
             const { fromInSeconds, toInSeconds } = dateValidation;
-            const { baseUrl, monobankApiToken } = getConfig();
+            const { baseUrl } = getConfig();
+            const monobankApiToken = requireToken();
+            const url = `${baseUrl}/personal/statement/${account}/${fromInSeconds}/${toInSeconds}`;
 
-            const response = await fetchWithErrorHandling(
-                `${baseUrl}/personal/statement/${account}/${fromInSeconds}/${toInSeconds}`,
-                {
-                    headers: {
-                        "X-Token": monobankApiToken,
-                    },
+            const formattedStatement = await withCache(
+                url,
+                PERSONAL_CACHE_TTL_MS,
+                async () => {
+                    const response = await fetchWithErrorHandling(url, {
+                        headers: {
+                            "X-Token": monobankApiToken,
+                        },
+                    });
+                    const data = await parseJsonResponse<unknown>(response);
+                    const statement = StatementResponseSchema.parse(data);
+                    return formatStatementItems(statement);
                 },
             );
-
-            const data = await parseJsonResponse<StatementItem[]>(response);
-            const statement = z.array(StatementItemSchema).parse(data);
-            const formattedStatement = formatStatementItems(statement);
 
             return createSuccessResponse(formattedStatement);
         } catch (error) {
