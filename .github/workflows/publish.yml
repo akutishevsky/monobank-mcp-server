@@ -24,13 +24,16 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v5
 
+            # `registry-url:` is deliberately NOT set. It makes setup-node write
+            # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into .npmrc;
+            # with no token in the environment that expands to an empty string,
+            # npm treats it as configured auth, never attempts the OIDC exchange,
+            # and fails with ENEEDAUTH. See actions/setup-node#1551. Publishing
+            # already defaults to registry.npmjs.org, so nothing is lost.
             - name: Set up Node.js
               uses: actions/setup-node@v5
               with:
                   node-version: "lts/*"
-                  # Without registry-url, setup-node writes no .npmrc and
-                  # NODE_AUTH_TOKEN never reaches npm, so `npm publish` 401s.
-                  registry-url: "https://registry.npmjs.org"
 
             # The version lives in five places (package.json, package-lock.json,
             # manifest.json, both fields in server.json, and the McpServer
@@ -93,25 +96,20 @@ jobs:
                       echo "exists=false" >> "$GITHUB_OUTPUT"
                   fi
 
-            # Authenticates by npm trusted publishing (OIDC), which needs no
-            # secret. Configure once at npmjs.com -> package -> Settings ->
-            # Trusted Publisher:
+            # Authenticated solely by npm trusted publishing (OIDC) — no secret,
+            # nothing to rotate. Configure once at
+            # https://www.npmjs.com/package/monobank-mcp-server/access
+            # under "Trusted Publisher":
             #     Organization or user: akutishevsky
             #     Repository:           monobank-mcp-server
             #     Workflow filename:    publish.yml
-            # Requires npm >= 11.5.1 / Node >= 22.14; `lts/*` currently gives
-            # Node 24 / npm 11.16.
+            # Requires npm >= 11.5.1 / Node >= 22.14; `lts/*` gives Node 24 / npm 11.
             #
-            # NODE_AUTH_TOKEN is a temporary fallback for the window before that
-            # is configured. It is not a long-term option: per the 2026-07-08 npm
-            # changelog, 2FA-bypass tokens lose the ability to publish directly in
-            # January 2027. Delete the secret and this `env:` block once trusted
-            # publishing is live.
+            # No NODE_AUTH_TOKEN here on purpose: setting it (even to an empty
+            # secret) makes npm prefer token auth and skip the OIDC exchange.
             - name: Publish package to npm
               if: steps.npm_check.outputs.exists == 'false'
               run: npm publish --provenance --access public
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
             # The registry validates that the npm package and version exist and
             # that its package.json carries a matching `mcpName`. npm's read path
