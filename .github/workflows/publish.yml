@@ -24,16 +24,21 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v5
 
-            # `registry-url:` is deliberately NOT set. It makes setup-node write
-            # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into .npmrc;
-            # with no token in the environment that expands to an empty string,
-            # npm treats it as configured auth, never attempts the OIDC exchange,
-            # and fails with ENEEDAUTH. See actions/setup-node#1551. Publishing
-            # already defaults to registry.npmjs.org, so nothing is lost.
+            # `registry-url:` is what makes setup-node write
+            # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into .npmrc,
+            # so it is required for token auth — NODE_AUTH_TOKEN does nothing
+            # without it.
+            #
+            # It is also incompatible with npm trusted publishing: when the token
+            # is empty, npm sees configured-but-blank auth, never attempts the
+            # OIDC exchange, and dies with ENEEDAUTH (actions/setup-node#1551).
+            # If you switch to OIDC later, delete this line AND the
+            # NODE_AUTH_TOKEN env on the publish step — both, or neither works.
             - name: Set up Node.js
               uses: actions/setup-node@v5
               with:
                   node-version: "lts/*"
+                  registry-url: "https://registry.npmjs.org"
 
             # The version lives in five places (package.json, package-lock.json,
             # manifest.json, both fields in server.json, and the McpServer
@@ -61,6 +66,20 @@ jobs:
                   check "server.json packages[0]" "$(jq -r '.packages[0].version' server.json)"
                   check "src/index.ts"           "$(grep -oE 'version: "[^"]+"' src/index.ts | head -1 | sed -E 's/.*"(.*)"/\1/')"
                   exit $fail
+
+            # An absent secret expands to an empty string rather than failing, and
+            # npm then reports it ten steps later as a bare "ENEEDAUTH ... you need
+            # to authorize this machine", which says nothing about the real cause.
+            # Fail here instead, with the fix in the message.
+            - name: Verify npm credentials are present
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+              run: |
+                  if [ -z "${NODE_AUTH_TOKEN}" ]; then
+                      echo "::error::The NPM_TOKEN secret is unset or empty. Create an npm Automation token (npmjs.com -> Access Tokens -> Generate New Token -> Automation) and add it under Settings -> Secrets and variables -> Actions as NPM_TOKEN."
+                      exit 1
+                  fi
+                  echo "NPM_TOKEN is present"
 
             - name: Install mcp-publisher
               run: |
@@ -96,20 +115,23 @@ jobs:
                       echo "exists=false" >> "$GITHUB_OUTPUT"
                   fi
 
-            # Authenticated solely by npm trusted publishing (OIDC) — no secret,
-            # nothing to rotate. Configure once at
-            # https://www.npmjs.com/package/monobank-mcp-server/access
-            # under "Trusted Publisher":
+            # Authenticated with an npm Automation token. This is a stopgap: per
+            # the 2026-07-08 npm changelog, tokens that bypass 2FA lose the
+            # ability to publish directly in January 2027.
+            #
+            # To migrate to trusted publishing before then, register the publisher
+            # at https://www.npmjs.com/package/monobank-mcp-server/access
             #     Organization or user: akutishevsky
             #     Repository:           monobank-mcp-server
             #     Workflow filename:    publish.yml
-            # Requires npm >= 11.5.1 / Node >= 22.14; `lts/*` gives Node 24 / npm 11.
-            #
-            # No NODE_AUTH_TOKEN here on purpose: setting it (even to an empty
-            # secret) makes npm prefer token auth and skip the OIDC exchange.
+            #     Environment name:     (leave empty)
+            # then delete the NPM_TOKEN secret, this `env:` block, the credential
+            # check above, and `registry-url:` on the setup-node step.
             - name: Publish package to npm
               if: steps.npm_check.outputs.exists == 'false'
               run: npm publish --provenance --access public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
             # The registry validates that the npm package and version exist and
             # that its package.json carries a matching `mcpName`. npm's read path
