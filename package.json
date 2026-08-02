@@ -37,7 +37,6 @@
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "prettier": "^3.8.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -45,6 +44,7 @@
     "@types/node": "^25.3.0",
     "eslint": "^9.39.3",
     "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1"
   }
