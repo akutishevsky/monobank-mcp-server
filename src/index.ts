@@ -27,7 +27,7 @@ const PERSONAL_CACHE_TTL_MS = 60_000;
 
 const server = new McpServer({
     name: "monobank-mcp-server",
-    version: "1.2.0",
+    version: "1.3.0",
 });
 
 server.tool(
