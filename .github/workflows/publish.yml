@@ -1,0 +1,142 @@
+name: Publish
+
+# Cutting a release is: bump the five version locations listed in CLAUDE.md,
+# commit, then `git tag v1.3.0 && git push origin v1.3.0`.
+on:
+    push:
+        tags: ["v*"]
+
+# A given tag is published exactly once. Never let two runs race to publish it.
+concurrency:
+    group: publish-${{ github.ref }}
+    cancel-in-progress: false
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        permissions:
+            # Required twice over: the MCP Registry exchanges this OIDC token for
+            # a registry token, and npm uses it to attach provenance.
+            id-token: write
+            contents: read
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v5
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v5
+              with:
+                  node-version: "lts/*"
+                  # Without registry-url, setup-node writes no .npmrc and
+                  # NODE_AUTH_TOKEN never reaches npm, so `npm publish` 401s.
+                  registry-url: "https://registry.npmjs.org"
+
+            # The version lives in five places (package.json, package-lock.json,
+            # manifest.json, both fields in server.json, and the McpServer
+            # constructor). Publishing a tag that disagrees with any of them ships
+            # a bundle that misreports its own version to clients, so fail here —
+            # before anything reaches npm or the registry, where it is permanent.
+            - name: Verify tag matches every declared version
+              run: |
+                  set -uo pipefail
+                  TAG_VERSION="${GITHUB_REF_NAME#v}"
+                  echo "Tag version: $TAG_VERSION"
+                  fail=0
+                  check() {
+                      if [ "$2" != "$TAG_VERSION" ]; then
+                          echo "::error::$1 declares '$2', expected '$TAG_VERSION'"
+                          fail=1
+                      else
+                          echo "ok    $1 = $2"
+                      fi
+                  }
+                  check "package.json"           "$(jq -r '.version' package.json)"
+                  check "package-lock.json"      "$(jq -r '.version' package-lock.json)"
+                  check "manifest.json"          "$(jq -r '.version' manifest.json)"
+                  check "server.json"            "$(jq -r '.version' server.json)"
+                  check "server.json packages[0]" "$(jq -r '.packages[0].version' server.json)"
+                  check "src/index.ts"           "$(grep -oE 'version: "[^"]+"' src/index.ts | head -1 | sed -E 's/.*"(.*)"/\1/')"
+                  exit $fail
+
+            - name: Install mcp-publisher
+              run: |
+                  curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+            # Deliberately ahead of `npm publish`: npm versions are immutable, so
+            # discovering a malformed server.json afterwards would burn a version
+            # number that can never be reused.
+            - name: Validate server.json
+              run: ./mcp-publisher validate
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Run tests
+              run: npm run test --if-present
+
+            - name: Build
+              run: npm run build
+
+            # npm versions are immutable, so a re-run after a partial failure must
+            # not try to publish again — it would abort the job before the registry
+            # step it was re-run to reach.
+            - name: Check whether this version is already on npm
+              id: npm_check
+              run: |
+                  PKG="$(jq -r '.name' package.json)"
+                  VERSION="${GITHUB_REF_NAME#v}"
+                  if npm view "$PKG@$VERSION" version >/dev/null 2>&1; then
+                      echo "$PKG@$VERSION is already published; skipping npm publish"
+                      echo "exists=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "exists=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            # Authenticates by npm trusted publishing (OIDC), which needs no
+            # secret. Configure once at npmjs.com -> package -> Settings ->
+            # Trusted Publisher:
+            #     Organization or user: akutishevsky
+            #     Repository:           monobank-mcp-server
+            #     Workflow filename:    publish.yml
+            # Requires npm >= 11.5.1 / Node >= 22.14; `lts/*` currently gives
+            # Node 24 / npm 11.16.
+            #
+            # NODE_AUTH_TOKEN is a temporary fallback for the window before that
+            # is configured. It is not a long-term option: per the 2026-07-08 npm
+            # changelog, 2FA-bypass tokens lose the ability to publish directly in
+            # January 2027. Delete the secret and this `env:` block once trusted
+            # publishing is live.
+            - name: Publish package to npm
+              if: steps.npm_check.outputs.exists == 'false'
+              run: npm publish --provenance --access public
+              env:
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+            # The registry validates that the npm package and version exist and
+            # that its package.json carries a matching `mcpName`. npm's read path
+            # lags writes by a few seconds, so publishing immediately is a race
+            # that surfaces as "Package validation failed".
+            - name: Wait for npm to serve the new version
+              run: |
+                  PKG="$(jq -r '.name' package.json)"
+                  VERSION="${GITHUB_REF_NAME#v}"
+                  for attempt in $(seq 1 30); do
+                      if npm view "$PKG@$VERSION" version >/dev/null 2>&1; then
+                          echo "npm is serving $PKG@$VERSION"
+                          exit 0
+                      fi
+                      echo "attempt $attempt: not visible yet, waiting 10s"
+                      sleep 10
+                  done
+                  echo "::error::$PKG@$VERSION did not become visible on npm within 5 minutes"
+                  exit 1
+
+            # OIDC: no secret to store, nothing to rotate. Ownership of the
+            # io.github.akutishevsky/* namespace is proven by the workflow's own
+            # identity, and cross-checked against `mcpName` in the npm package.
+            - name: Authenticate to MCP Registry
+              run: ./mcp-publisher login github-oidc
+
+            - name: Publish server to MCP Registry
+              run: ./mcp-publisher publish
