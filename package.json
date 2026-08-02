@@ -10,9 +10,8 @@
   "scripts": {
     "build": "tsc && chmod +x build/index.js",
     "format": "prettier --write src/",
-    "lint": "eslint src/",
     "prepublishOnly": "npm run build",
-    "pack:mcpb": "npm run build && rm -rf mcpb-staging && mkdir -p mcpb-staging/server && cp -r build/* mcpb-staging/server/ && cp -r node_modules mcpb-staging/node_modules && cp package.json mcpb-staging/package.json && cp manifest.json mcpb-staging/manifest.json && cd mcpb-staging && zip -r ../monobank-mcp-server.mcpb . && cd .. && rm -rf mcpb-staging"
+    "pack:mcpb": "npm run build && ./scripts/pack-mcpb.sh"
   },
   "files": [
     "build"
@@ -40,12 +39,8 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.3",
     "@types/node": "^25.3.0",
-    "eslint": "^9.39.3",
-    "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.1",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1"
+    "typescript": "^7.0.2"
   }
 }

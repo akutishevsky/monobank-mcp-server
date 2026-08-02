@@ -15,9 +15,22 @@ npm run pack:mcpb    # build + package as .mcpb bundle
 
 TypeScript compiles from `src/` to `build/`. The output entry point (`build/index.js`) has a shebang and is chmod'd executable. No test or lint scripts exist.
 
+Uses TypeScript 7 (the Go-native compiler). Note that TS 7 no longer auto-includes every `@types/*` package, so `tsconfig.json` sets `"types": ["node"]` explicitly — without it, `process` fails to resolve in `config.ts` and `index.ts`.
+
 ## MCPB Support
 
-The project includes a `manifest.json` (MCPB v0.3) for one-click installation in Claude Desktop/Claude Code. The manifest declares all three tools, wires `MONOBANK_API_TOKEN` via `user_config` (secure prompt on install), and requires Node >=18. The `pack:mcpb` script stages `build/`, `node_modules/`, `package.json`, and `manifest.json` into a ZIP archive (`monobank-mcp-server.mcpb`).
+The project includes a `manifest.json` (MCPB v0.3) for one-click installation in Claude Desktop/Claude Code. The manifest declares all three tools, wires `MONOBANK_API_TOKEN` via `user_config` (secure prompt on install), and requires Node >=18.
+
+`npm run pack:mcpb` builds, then runs `scripts/pack-mcpb.sh`, which stages into `mcpb-staging/` and zips to `monobank-mcp-server.mcpb`:
+
+| Path in bundle | Source |
+|---|---|
+| `manifest.json` | copied; `entry_point` is `server/index.js` |
+| `package.json` | copied — required at the bundle root so `"type": "module"` applies to `server/*.js` |
+| `server/` | contents of `build/` |
+| `node_modules/` | `npm ci --omit=dev` against the staged lockfile |
+
+Dependencies are installed fresh rather than copied from the repo's `node_modules`, which would drag dev dependencies in — `typescript@7` alone adds a ~26MB platform-specific Go binary. The install passes `--ignore-scripts`; revisit that if a runtime dependency ever needs a native build step.
 
 ## Version Bumping
 
@@ -58,14 +71,15 @@ The server exposes three MCP tools over stdio transport:
 - Authenticated endpoints use the `X-Token` header
 - Config throws on missing `MONOBANK_API_TOKEN` at initialization
 
-## Formatting & Linting
+## Formatting
 
-Prettier with 4-space indentation (see `.prettierrc`). ESLint 9 with flat config (`eslint.config.js`), using `typescript-eslint` recommended rules and `eslint-config-prettier` to avoid conflicts.
+Prettier with 4-space indentation (see `.prettierrc`).
 
 ```bash
-npm run lint         # eslint src/
 npm run format       # prettier --write src/
 ```
+
+There is no lint step. ESLint and `typescript-eslint` were removed when the project moved to TypeScript 7 — the `typescript@7` package ships only a Go binary and no `lib/typescript.js`, so the programmatic compiler API that `typescript-eslint` depends on does not exist. Its peer range (`>=4.8.4 <6.1.0`) refuses TS 7 outright. Revisit once TypeScript 7.1 ships the new compiler API and `typescript-eslint` adds support.
 
 ---
 
