@@ -131,9 +131,11 @@ export const JarSchema = z
             .describe(
                 "Raw API value is in cents; divided by 100 into currency units before being returned.",
             ),
+        // A jar created without a target comes back as `"goal": null`, not
+        // an omitted key, so `.optional()` alone rejects the whole response.
         goal: z
             .number()
-            .optional()
+            .nullish()
             .describe(
                 "Raw API value is in cents; divided by 100 into currency units before being returned.",
             ),
