@@ -1,4 +1,9 @@
-import { createServer, IncomingMessage, ServerResponse } from "node:http";
+import {
+    createServer,
+    IncomingMessage,
+    Server,
+    ServerResponse,
+} from "node:http";
 import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -35,7 +40,7 @@ function readBody(req: IncomingMessage): Promise<string> {
 export async function startHttpServer(
     createServer_: () => McpServer,
     port: number,
-): Promise<void> {
+): Promise<Server> {
     const httpServer = createServer(async (req, res) => {
         const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
 
@@ -56,10 +61,13 @@ export async function startHttpServer(
         }
     });
 
-    httpServer.listen(port, "0.0.0.0", () => {
-        console.error(
-            `Monobank MCP Server running on http://0.0.0.0:${port}${MCP_PATH}`,
-        );
+    return new Promise((resolve) => {
+        httpServer.listen(port, "0.0.0.0", () => {
+            console.error(
+                `Monobank MCP Server running on http://0.0.0.0:${port}${MCP_PATH}`,
+            );
+            resolve(httpServer);
+        });
     });
 }
 

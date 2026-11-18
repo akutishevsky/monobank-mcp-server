@@ -1,6 +1,39 @@
 import { z } from "zod";
 import { Account, ClientInfo, StatementItem } from "./interfaces.js";
 
+/* -------------------------------------------------------------------------- */
+/*                             Request logging                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Logs an incoming MCP tool call to stderr.
+ *
+ * Sensitive fields (account identifiers, tokens) are masked so that logs
+ * never contain data that could identify a user or grant access.
+ */
+export function logToolRequest(
+    toolName: string,
+    params: Record<string, unknown>,
+): void {
+    const SENSITIVE_KEYS = new Set(["account"]);
+
+    const safe: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(params)) {
+        if (SENSITIVE_KEYS.has(key) && typeof value === "string" && value.length > 0) {
+            safe[key] = value.length <= 4
+                ? "*".repeat(value.length)
+                : value.slice(0, 2) + "*".repeat(value.length - 2);
+        } else {
+            safe[key] = value;
+        }
+    }
+
+    const hasParams = Object.keys(safe).length > 0;
+    console.error(
+        `[${new Date().toISOString()}] Tool call: ${toolName}${hasParams ? ` | params: ${JSON.stringify(safe)}` : ""}`,
+    );
+}
+
 export interface ToolResponse {
     [key: string]: unknown;
     content: Array<{

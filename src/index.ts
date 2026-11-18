@@ -16,6 +16,7 @@ import {
     formatStatementItems,
     formatClientInfo,
     withCache,
+    logToolRequest,
 } from "./helpers.js";
 import { initializeConfig, getConfig, requireToken } from "./config.js";
 import { startHttpServer } from "./http-server.js";
@@ -44,6 +45,7 @@ export function createConfiguredServer(): McpServer {
         "Get the list of currency exchange rates from Monobank. This is a public endpoint and does not require an API token. Monobank permits only one request per 5 minutes, so the response is cached in memory for 5 minutes: calls made within that window return the cached rates instead of failing with a rate-limit error.",
         {},
         async () => {
+            logToolRequest("get_currency_rates", {});
             try {
                 const { baseUrl } = getConfig();
                 const url = `${baseUrl}/bank/currency`;
@@ -71,6 +73,7 @@ export function createConfiguredServer(): McpServer {
         "Get information about the client together with the list of their accounts and jars. Requires the MONOBANK_API_TOKEN environment variable. Monobank permits only one request per 60 seconds, so the response is cached in memory for 60 seconds: calls made within that window return the cached data instead of failing with a rate-limit error. All monetary amounts are returned in currency units, not in cents. The account and jar identifiers returned by this tool can be passed to get_statement.",
         {},
         async () => {
+            logToolRequest("get_client_info", {});
             try {
                 const { baseUrl } = getConfig();
                 const monobankApiToken = requireToken();
@@ -123,6 +126,7 @@ export function createConfiguredServer(): McpServer {
                 ),
         },
         async ({ account, from, to }) => {
+            logToolRequest("get_statement", { account, from, to });
             try {
                 const dateValidation = validateStatementDates(from, to);
                 if ("content" in dateValidation) {
@@ -166,7 +170,14 @@ async function main() {
 
     if (transport === "http") {
         const port = parseInt(process.env.PORT ?? "3000", 10);
-        await startHttpServer(createConfiguredServer, port);
+        const httpServer = await startHttpServer(createConfiguredServer, port);
+
+        const shutdown = () => {
+            console.error("Shutting down…");
+            httpServer.close(() => process.exit(0));
+        };
+        process.on("SIGTERM", shutdown);
+        process.on("SIGINT", shutdown);
     } else {
         const server = createConfiguredServer();
         const stdioTransport = new StdioServerTransport();

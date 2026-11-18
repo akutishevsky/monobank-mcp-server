@@ -1,6 +1,7 @@
 services:
   monobank-mcp-server:
     build: .
+    init: true
     ports:
       - "${PORT:-3000}:3000"
     environment:
