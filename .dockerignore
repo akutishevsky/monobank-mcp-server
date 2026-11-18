@@ -1,0 +1,7 @@
+node_modules
+build
+*.mcpb
+mcpb-staging
+.git
+.env
+.env.*

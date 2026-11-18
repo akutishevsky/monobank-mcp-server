@@ -31,6 +31,8 @@ The server provides three tools:
 
 ## MCP Configuration
 
+### stdio (default)
+
 To use this server with an MCP client, add it to your configuration:
 
 ```json
@@ -46,6 +48,47 @@ To use this server with an MCP client, add it to your configuration:
   }
 }
 ```
+
+### Docker (HTTP transport)
+
+The server can run as a Docker container exposing an HTTP endpoint with the MCP Streamable HTTP transport.
+
+**Using Docker directly:**
+
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e MONOBANK_API_TOKEN=your_token_here \
+  ghcr.io/akutishevsky/monobank-mcp-server:latest
+```
+
+**Using Docker Compose:**
+
+```bash
+MONOBANK_API_TOKEN=your_token_here docker compose up -d
+```
+
+The MCP endpoint is available at `http://localhost:3000/mcp`.
+
+To connect an MCP client to the HTTP server, use the `url` configuration instead of `command`:
+
+```json
+{
+  "mcpServers": {
+    "monobank": {
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}
+```
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `TRANSPORT` | `stdio` | Transport mode: `stdio` or `http` |
+| `PORT` | `3000` | HTTP server port (only used when `TRANSPORT=http`) |
+| `MONOBANK_API_TOKEN` | — | Monobank API token (required for authenticated tools) |
 
 ## Example Prompts
 
