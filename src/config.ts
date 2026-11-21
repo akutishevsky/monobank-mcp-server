@@ -1,6 +1,10 @@
 export interface Config {
     monobankApiToken?: string;
+    mcpAuthToken?: string;
     baseUrl: string;
+    host: string;
+    port: number;
+    sessionIdleTimeoutMs: number;
 }
 
 let config: Config | null = null;
@@ -8,7 +12,14 @@ let config: Config | null = null;
 export function initializeConfig(): Config {
     config = {
         monobankApiToken: process.env.MONOBANK_API_TOKEN,
+        mcpAuthToken: process.env.MCP_AUTH_TOKEN,
         baseUrl: "https://api.monobank.ua",
+        host: process.env.HOST ?? "127.0.0.1",
+        port: parseInt(process.env.PORT ?? "3000", 10),
+        sessionIdleTimeoutMs: parseInt(
+            process.env.SESSION_IDLE_TIMEOUT_MS ?? "600000",
+            10,
+        ),
     };
 
     return config;

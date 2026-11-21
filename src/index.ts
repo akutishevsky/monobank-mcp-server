@@ -28,7 +28,6 @@ const CURRENCY_CACHE_TTL_MS = 300_000;
 const PERSONAL_CACHE_TTL_MS = 60_000;
 
 const SERVER_NAME = "monobank-mcp-server";
-const SERVER_VERSION = "1.3.1";
 
 /**
  * Creates an McpServer instance with all Monobank tools registered.
@@ -37,7 +36,7 @@ const SERVER_VERSION = "1.3.1";
 export function createConfiguredServer(): McpServer {
     const server = new McpServer({
         name: SERVER_NAME,
-        version: SERVER_VERSION,
+        version: "1.3.1",
     });
 
     server.tool(
@@ -169,8 +168,12 @@ async function main() {
     const transport = process.env.TRANSPORT?.toLowerCase() ?? "stdio";
 
     if (transport === "http") {
-        const port = parseInt(process.env.PORT ?? "3000", 10);
-        const httpServer = await startHttpServer(createConfiguredServer, port);
+        const { host, port } = getConfig();
+        const httpServer = await startHttpServer(
+            createConfiguredServer,
+            port,
+            host,
+        );
 
         const shutdown = () => {
             console.error("Shutting down…");

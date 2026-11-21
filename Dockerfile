@@ -14,6 +14,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder /app/build/ build/
 
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
 ENV TRANSPORT=http
 ENV PORT=3000
 

@@ -19,10 +19,15 @@ export function logToolRequest(
 
     const safe: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(params)) {
-        if (SENSITIVE_KEYS.has(key) && typeof value === "string" && value.length > 0) {
-            safe[key] = value.length <= 4
-                ? "*".repeat(value.length)
-                : value.slice(0, 2) + "*".repeat(value.length - 2);
+        if (
+            SENSITIVE_KEYS.has(key) &&
+            typeof value === "string" &&
+            value.length > 0
+        ) {
+            safe[key] =
+                value.length <= 4
+                    ? "*".repeat(value.length)
+                    : value.slice(0, 2) + "*".repeat(value.length - 2);
         } else {
             safe[key] = value;
         }
