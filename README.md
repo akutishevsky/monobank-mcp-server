@@ -53,12 +53,19 @@ To use this server with an MCP client, add it to your configuration:
 
 The server can run as a Docker container exposing an HTTP endpoint with the MCP Streamable HTTP transport.
 
+The HTTP endpoint serves your bank data, so it always requires a bearer token. Generate one first:
+
+```bash
+export MCP_AUTH_TOKEN=$(openssl rand -hex 32)
+```
+
 **Using Docker directly:**
 
 ```bash
 docker run -d \
-  -p 3000:3000 \
+  -p 127.0.0.1:3000:3000 \
   -e MONOBANK_API_TOKEN=your_token_here \
+  -e MCP_AUTH_TOKEN \
   ghcr.io/akutishevsky/monobank-mcp-server:latest
 ```
 
@@ -70,13 +77,16 @@ MONOBANK_API_TOKEN=your_token_here docker compose up -d
 
 The MCP endpoint is available at `http://localhost:3000/mcp`.
 
-To connect an MCP client to the HTTP server, use the `url` configuration instead of `command`:
+To connect an MCP client to the HTTP server, use the `url` configuration instead of `command`, and send the token in the `Authorization` header:
 
 ```json
 {
   "mcpServers": {
     "monobank": {
-      "url": "http://localhost:3000/mcp"
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer your_mcp_auth_token"
+      }
     }
   }
 }
@@ -87,8 +97,12 @@ To connect an MCP client to the HTTP server, use the `url` configuration instead
 | Variable | Default | Description |
 |---|---|---|
 | `TRANSPORT` | `stdio` | Transport mode: `stdio` or `http` |
-| `PORT` | `3000` | HTTP server port (only used when `TRANSPORT=http`) |
 | `MONOBANK_API_TOKEN` | — | Monobank API token (required for authenticated tools) |
+| `MCP_AUTH_TOKEN` | — | Bearer token clients must send. Required when `TRANSPORT=http`; the server refuses to start without it |
+| `HOST` | `127.0.0.1` | Interface to listen on. The Docker image sets `0.0.0.0` |
+| `PORT` | `3000` | HTTP server port |
+| `ALLOWED_HOSTS` | — | Extra comma-separated `host:port` values accepted in the `Host` header, e.g. when publishing on a different port or reaching the server by LAN hostname. `localhost` and `127.0.0.1` on `PORT` are always allowed |
+| `SESSION_IDLE_TIMEOUT_MS` | `600000` | Idle MCP sessions are closed after this many milliseconds |
 
 ## Example Prompts
 

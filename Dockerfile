@@ -18,6 +18,9 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 
 ENV TRANSPORT=http
+# Listen on all interfaces inside the container; loopback is unreachable
+# through a published port.
+ENV HOST=0.0.0.0
 ENV PORT=3000
 
 EXPOSE 3000

@@ -4,6 +4,8 @@ export interface Config {
     baseUrl: string;
     host: string;
     port: number;
+    /** Extra `host[:port]` values accepted in the Host header, from ALLOWED_HOSTS. */
+    extraAllowedHosts: string[];
     sessionIdleTimeoutMs: number;
 }
 
@@ -16,6 +18,10 @@ export function initializeConfig(): Config {
         baseUrl: "https://api.monobank.ua",
         host: process.env.HOST ?? "127.0.0.1",
         port: parseInt(process.env.PORT ?? "3000", 10),
+        extraAllowedHosts: (process.env.ALLOWED_HOSTS ?? "")
+            .split(",")
+            .map((h) => h.trim())
+            .filter((h) => h.length > 0),
         sessionIdleTimeoutMs: parseInt(
             process.env.SESSION_IDLE_TIMEOUT_MS ?? "600000",
             10,

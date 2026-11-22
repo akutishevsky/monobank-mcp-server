@@ -86,8 +86,22 @@ export async function startHttpServer(
     port: number,
     host: string,
 ): Promise<Server> {
-    const { mcpAuthToken, sessionIdleTimeoutMs } = getConfig();
-    const allowedHosts = buildAllowedHosts(host, port);
+    const { mcpAuthToken, sessionIdleTimeoutMs, extraAllowedHosts } =
+        getConfig();
+
+    // The HTTP endpoint serves the owner's bank data, so it never runs
+    // unauthenticated — not even on loopback, where any local process
+    // could otherwise read it.
+    if (!mcpAuthToken) {
+        throw new Error(
+            "MCP_AUTH_TOKEN must be set when TRANSPORT=http. Generate one with `openssl rand -hex 32` and send it from the client as `Authorization: Bearer <token>`.",
+        );
+    }
+
+    const allowedHosts = [
+        ...buildAllowedHosts(host, port),
+        ...extraAllowedHosts,
+    ];
     const allowedOrigins = allowedHosts.map((h) => `http://${h}`);
 
     const httpServer = createServer(async (req, res) => {
@@ -103,15 +117,10 @@ export async function startHttpServer(
                 return;
             }
 
-            // Bearer token auth when MCP_AUTH_TOKEN is configured.
-            if (mcpAuthToken) {
-                if (
-                    !checkBearerToken(req.headers.authorization, mcpAuthToken)
-                ) {
-                    res.writeHead(401, { "Content-Type": "application/json" });
-                    res.end(JSON.stringify({ error: "Unauthorized" }));
-                    return;
-                }
+            if (!checkBearerToken(req.headers.authorization, mcpAuthToken)) {
+                res.writeHead(401, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ error: "Unauthorized" }));
+                return;
             }
 
             await handleMcpRequest(req, res, createServer_);
@@ -144,7 +153,20 @@ export async function startHttpServer(
 
         if (req.method === "POST") {
             const body = await readBody(req);
-            const parsed = JSON.parse(body);
+            let parsed: unknown;
+            try {
+                parsed = JSON.parse(body);
+            } catch {
+                res.writeHead(400, { "Content-Type": "application/json" });
+                res.end(
+                    JSON.stringify({
+                        jsonrpc: "2.0",
+                        error: { code: -32700, message: "Parse error" },
+                        id: null,
+                    }),
+                );
+                return;
+            }
 
             if (sessionId && sessions.has(sessionId)) {
                 const session = sessions.get(sessionId)!;
