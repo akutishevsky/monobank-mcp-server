@@ -69,6 +69,8 @@ docker run -d \
   ghcr.io/akutishevsky/monobank-mcp-server:latest
 ```
 
+If you publish on a host port other than 3000 (for example `-p 127.0.0.1:8080:3000`), also pass `-e ALLOWED_HOSTS=localhost:8080`. Otherwise the server rejects requests whose `Host` header doesn't match. Docker Compose sets this for you from `PORT`.
+
 **Using Docker Compose:**
 
 ```bash
