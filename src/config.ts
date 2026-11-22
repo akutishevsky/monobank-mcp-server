@@ -17,14 +17,15 @@ export function initializeConfig(): Config {
         mcpAuthToken: process.env.MCP_AUTH_TOKEN,
         baseUrl: "https://api.monobank.ua",
         host: process.env.HOST ?? "127.0.0.1",
-        port: parseInt(process.env.PORT ?? "3000", 10),
+        // Number(), not parseInt(): parseInt("10m") is 10, which would turn a
+        // typo into a silently wrong value. Validated in startHttpServer().
+        port: Number(process.env.PORT ?? "3000"),
         extraAllowedHosts: (process.env.ALLOWED_HOSTS ?? "")
             .split(",")
             .map((h) => h.trim())
             .filter((h) => h.length > 0),
-        sessionIdleTimeoutMs: parseInt(
+        sessionIdleTimeoutMs: Number(
             process.env.SESSION_IDLE_TIMEOUT_MS ?? "600000",
-            10,
         ),
     };
 

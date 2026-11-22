@@ -165,7 +165,12 @@ export function createConfiguredServer(): McpServer {
 async function main() {
     initializeConfig();
 
-    const transport = process.env.TRANSPORT?.toLowerCase() ?? "stdio";
+    const transport = (process.env.TRANSPORT ?? "stdio").toLowerCase();
+    if (transport !== "stdio" && transport !== "http") {
+        throw new Error(
+            `Unknown TRANSPORT "${process.env.TRANSPORT}". Use "stdio" or "http".`,
+        );
+    }
 
     if (transport === "http") {
         const { host, port } = getConfig();
@@ -175,9 +180,20 @@ async function main() {
             host,
         );
 
+        let shuttingDown = false;
         const shutdown = () => {
+            if (shuttingDown) return;
+            shuttingDown = true;
             console.error("Shutting down…");
-            httpServer.close(() => process.exit(0));
+            // Fallback in case a connection refuses to close.
+            setTimeout(() => process.exit(1), 5_000).unref();
+            httpServer.shutdown().then(
+                () => process.exit(0),
+                (error) => {
+                    console.error("Error during shutdown:", error);
+                    process.exit(1);
+                },
+            );
         };
         process.on("SIGTERM", shutdown);
         process.on("SIGINT", shutdown);

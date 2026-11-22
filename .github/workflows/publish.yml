@@ -148,6 +148,10 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v5
 
+            # Buildx alone can't run arm64 RUN steps on the amd64 runner.
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v4
+
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v3
 
