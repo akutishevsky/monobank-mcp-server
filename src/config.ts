@@ -1,6 +1,12 @@
 export interface Config {
     monobankApiToken?: string;
+    mcpAuthToken?: string;
     baseUrl: string;
+    host: string;
+    port: number;
+    /** Extra `host[:port]` values accepted in the Host header, from ALLOWED_HOSTS. */
+    extraAllowedHosts: string[];
+    sessionIdleTimeoutMs: number;
 }
 
 let config: Config | null = null;
@@ -8,7 +14,19 @@ let config: Config | null = null;
 export function initializeConfig(): Config {
     config = {
         monobankApiToken: process.env.MONOBANK_API_TOKEN,
+        mcpAuthToken: process.env.MCP_AUTH_TOKEN,
         baseUrl: "https://api.monobank.ua",
+        host: process.env.HOST ?? "127.0.0.1",
+        // Number(), not parseInt(): parseInt("10m") is 10, which would turn a
+        // typo into a silently wrong value. Validated in startHttpServer().
+        port: Number(process.env.PORT ?? "3000"),
+        extraAllowedHosts: (process.env.ALLOWED_HOSTS ?? "")
+            .split(",")
+            .map((h) => h.trim())
+            .filter((h) => h.length > 0),
+        sessionIdleTimeoutMs: Number(
+            process.env.SESSION_IDLE_TIMEOUT_MS ?? "600000",
+        ),
     };
 
     return config;

@@ -40,13 +40,13 @@ When bumping the app version, update ALL of these files:
 |------|----------|
 | `package.json` | `"version"` field |
 | `package-lock.json` | Run `npm install --package-lock-only` after updating `package.json` |
-| `src/index.ts` | `version` in `new McpServer({...})` constructor |
+| `src/index.ts` | `version` in `new McpServer({...})` constructor — keep it a string literal; the release workflow greps for `version: "x.y.z"` |
 | `manifest.json` | `"version"` field |
 | `server.json` | `"version"` field (top-level) and `"packages[0].version"` |
 
 ## Architecture
 
-The server exposes three MCP tools over stdio transport:
+The server exposes three MCP tools over stdio (default) or, with `TRANSPORT=http`, the Streamable HTTP transport (see `http-server.ts`; used by the Docker image). HTTP mode refuses to start without `MCP_AUTH_TOKEN` and validates `Host`/`Origin` against loopback plus `ALLOWED_HOSTS`.
 
 - **get_currency_rates** — public endpoint, rate-limited to once per 5 min
 - **get_client_info** — authenticated, rate-limited to once per 60s
@@ -56,8 +56,9 @@ The server exposes three MCP tools over stdio transport:
 
 | File | Role |
 |------|------|
-| `index.ts` | MCP server setup, tool definitions (all three tools registered here) |
-| `config.ts` | Lazy-initialized singleton; reads `MONOBANK_API_TOKEN` env var, stores API base URL |
+| `index.ts` | `createConfiguredServer()` registers all three tools; `main()` picks the transport |
+| `http-server.ts` | Streamable HTTP transport: bearer auth, DNS rebinding protection, per-session servers, idle cleanup |
+| `config.ts` | Lazy-initialized singleton; reads env vars (`MONOBANK_API_TOKEN`, plus HTTP-mode `MCP_AUTH_TOKEN`, `HOST`, `PORT`, `ALLOWED_HOSTS`, `SESSION_IDLE_TIMEOUT_MS`), stores API base URL |
 | `schemas.ts` | Zod schemas validating Monobank API responses (`CurrencyRateSchema`, `StatementItemSchema`) |
 | `interfaces.ts` | TypeScript interfaces (`CurrencyRate`) |
 | `helpers.ts` | Shared utilities: fetch wrapper, MCP response builders, date validation, amount formatting (cents → currency units) |
