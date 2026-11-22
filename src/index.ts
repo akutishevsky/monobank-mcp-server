@@ -36,7 +36,7 @@ const SERVER_NAME = "monobank-mcp-server";
 export function createConfiguredServer(): McpServer {
     const server = new McpServer({
         name: SERVER_NAME,
-        version: "1.3.1",
+        version: "1.4.0",
     });
 
     server.tool(
